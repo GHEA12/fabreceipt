@@ -1,0 +1,14 @@
+FabReceipt snapshot diff
+  older: block 76813465 (2026-11-25T04:58:02.671Z) — FabReceipt census scanner (phase B)
+  newer: block 76814000 (2026-11-25T05:10:00.000Z) — FabReceipt census scanner (phase B)
+  block distance: 535
+
+8 change event(s):
+  [protocol/implementation-changed] Factory implementation changed: 0x336e9F0F4c3fEe7C8c803377e4DEA00293f4ae2a -> 0x000000000000000000000000000000000000dEaD
+  [protocol/cpu-count-changed] Registered processors: 449 -> 450
+  [processor/transistors-minted] CPU[2] Xehemoth (0xE0EF4FffD869cBD24b2F83E6d2d83109937E05ff): transistors minted 182 -> 100000 (+99818)
+  [processor/sold-out] CPU[2] Xehemoth (0xE0EF4FffD869cBD24b2F83E6d2d83109937E05ff): transistors SOLD OUT (minted 100000 of cap 100000)
+  [processor/price-changed] CPU[10] XDOG (0x5CA58d1ee9BABf7C716E55a37A6f2e780250a1ba): transistor price 0.00066 OKB -> 0.002 OKB
+  [processor/circuits-etched] CPU[11] TapeOut0KX (0xfb6C4359b3624Dd58ffE3ED5D34DBadE2782f843): 3 new circuit(s) etched (3 -> 6)
+  [processor/first-etch] CPU[15] TapX (0xeCfccCd10a2993Ad73eDdDA3F88A767c89508331): 1 new circuit(s) etched (0 -> 1) — FIRST ETCH
+  [processor/new-processor] CPU[449] NewCPU (0x000000000000000000000000000000000000bEEF): NEW processor registered

@@ -1,0 +1,8 @@
+FabReceipt snapshot diff
+  older: block 76812763 (2026-11-25T04:43:19.056Z) — FabReceipt scanner (phase A)
+  newer: block 76813166 (2026-11-25T04:53:34.603Z) — FabReceipt census scanner (phase B)
+  block distance: 403
+  note: at least one snapshot is a Phase A integrity snapshot (protocol contracts only);
+        processor-level comparison requires two census (v2) snapshots.
+
+NO CHANGES DETECTED in the compared fields between the two snapshots.

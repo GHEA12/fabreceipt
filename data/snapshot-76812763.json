@@ -1,0 +1,27 @@
+{
+  "tool": "FabReceipt scanner (phase A)",
+  "chain": "X Layer mainnet",
+  "chainId": 196,
+  "block": 76812763,
+  "takenAt": "2026-11-25T04:43:19.056Z",
+  "contracts": [
+    {
+      "label": "TapeOut CPU factory",
+      "address": "0x1f09daefa827f02cbb40967cc91b259763760761",
+      "codeBytes": 130,
+      "implementation": "0x336e9F0F4c3fEe7C8c803377e4DEA00293f4ae2a",
+      "admin": null,
+      "beacon": null,
+      "implementationCodeBytes": 9376
+    },
+    {
+      "label": "TapeOut market",
+      "address": "0xd89f358c48a7B632c9845af2a02A32eB90DD75DB",
+      "codeBytes": 130,
+      "implementation": "0x38d688F4793a9Bf270c2c99492c9a1e45163dB6E",
+      "admin": null,
+      "beacon": null,
+      "implementationCodeBytes": 7405
+    }
+  ]
+}

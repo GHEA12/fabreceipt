@@ -1,0 +1,7 @@
+FabReceipt snapshot diff
+  older: block 76813060 (2026-11-25T04:49:27.899Z) — FabReceipt census scanner (phase B)
+  newer: block 76813166 (2026-11-25T04:53:34.603Z) — FabReceipt census scanner (phase B)
+  block distance: 106
+
+1 change event(s):
+  [data/read-completeness] 890 processor field(s) were unread (null) in one snapshot and populated in the other — a scanner read gap, NOT an on-chain change. Affected comparisons were skipped.

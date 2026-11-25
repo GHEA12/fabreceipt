@@ -1,0 +1,6 @@
+FabReceipt snapshot diff
+  older: block 76813166 (2026-11-25T04:53:34.603Z) — FabReceipt census scanner (phase B)
+  newer: block 76813465 (2026-11-25T04:58:02.671Z) — FabReceipt census scanner (phase B)
+  block distance: 299
+
+NO CHANGES DETECTED in the compared fields between the two snapshots.
