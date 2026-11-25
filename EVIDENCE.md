@@ -74,3 +74,13 @@ block-pinned; zero read errors)
   https://www.okx.com/xlayer/faucet, one command deploys ReceiptAnchor and
   anchors the census snapshot hash; tx hashes will be recorded here and in
   `data/anchor-testnet.json`.
+
+- DONE 2026-11-25: ReceiptAnchor deployed at
+  `0x1f029921d2a9eb6C5D8cef9FDC30D56beabA290c` (deploy tx
+  `0x63e6b91fbb2f92e86649f7523c445cf03b41d025ad0df0d29c31d1b049ca865d`); the
+  census snapshot hash `0xffb91249…7c0d4` for mainnet block 76,813,465 is
+  anchored (anchor tx
+  `0xd4d58d86df0a243a0fe0f5e30b5f20a409c949c1059fb22027a52330f5172d82`,
+  testnet block 47,124,169). Read-back verified on-chain: `count()` = 1 and
+  `get(0)` returns the exact hash, block and URI. Full record in
+  `data/anchor-testnet.json`.
