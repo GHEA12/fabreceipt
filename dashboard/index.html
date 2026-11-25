@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FabReceipt — TapeOut processor receipts on X Layer</title>
+<style>
+  body { font-family: system-ui, sans-serif; margin: 2rem auto; max-width: 980px; padding: 0 1rem; background:#0b0e13; color:#e6e9ee; }
+  h1 { font-size: 1.6rem; margin-bottom:.2rem; } h2 { font-size:1.15rem; margin-top:1.6rem; }
+  .sub { color:#9aa4b2; } a { color:#6cb2ff; }
+  .card { background:#141922; border:1px solid #232b38; border-radius:10px; padding:1rem 1.2rem; margin:1rem 0; }
+  .mono { font-family: ui-monospace, monospace; font-size:.85rem; word-break: break-all; }
+  .k { color:#9aa4b2; }
+  .warn { color:#ffb454; } .bad { color:#ff7a7a; } .ok { color:#7bd88a; }
+  .flag { display:inline-block; border:1px solid #ffb454; color:#ffb454; border-radius:6px; padding:.05rem .45rem; font-size:.75rem; margin-right:.35rem; }
+  .flag.red { border-color:#ff7a7a; color:#ff7a7a; } .flag.green { border-color:#7bd88a; color:#7bd88a; }
+  .stats { display:flex; flex-wrap:wrap; gap:.6rem; margin:1rem 0; }
+  .stat { background:#141922; border:1px solid #232b38; border-radius:10px; padding:.6rem .9rem; min-width:8.5rem; }
+  .stat b { font-size:1.25rem; display:block; }
+  input[type=search] { width:100%; box-sizing:border-box; padding:.55rem .7rem; border-radius:8px; border:1px solid #232b38; background:#0f141c; color:#e6e9ee; font-size:.95rem; }
+  table { width:100%; border-collapse:collapse; font-size:.9rem; }
+  th, td { text-align:left; padding:.45rem .5rem; border-bottom:1px solid #232b38; vertical-align:top; }
+  th { color:#9aa4b2; font-weight:600; cursor:pointer; white-space:nowrap; }
+  tr.prow:hover { background:#171e29; cursor:pointer; }
+  .num { text-align:right; font-variant-numeric: tabular-nums; }
+  .receipt h2 { margin-top:.2rem; }
+  .grid { display:grid; grid-template-columns: 1fr 1fr; gap:0 1.5rem; }
+  @media (max-width: 720px) { .grid { grid-template-columns: 1fr; } }
+  .evt { border-left:3px solid #ffb454; padding:.3rem .7rem; margin:.5rem 0; background:#12161f; }
+  .evt.proto { border-left-color:#ff7a7a; }
+  button { background:#1b2330; color:#e6e9ee; border:1px solid #2b3648; border-radius:8px; padding:.4rem .8rem; cursor:pointer; }
+</style>
+</head>
+<body>
+<h1>FabReceipt</h1>
+<p class="sub">A living safety-and-activity receipt for every TapeOut processor on X Layer.
+Read directly from X Layer mainnet contracts — no indexer, no API key. Pick a processor to see its full receipt.</p>
+<div id="app">Loading census snapshot…</div>
+<script>
+'use strict';
+const esc = (s) => String(s ?? '—').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const short = (a) => a ? esc(a.slice(0, 10)) + '…' + esc(a.slice(-6)) : '—';
+const fmt = (n) => n === null || n === undefined ? '—' : Number(n).toLocaleString('en-US');
+let SNAP = null, DIFF = null, sortKey = 'circuitsEtched', sortDir = -1, query = '';
+
+function flagsFor(p) {
+  const f = [];
+  if (p.circuitsEtched === 0) f.push('<span class="flag">NEVER ETCHED</span>');
+  if (p.transistors && p.transistors.soldOut) f.push('<span class="flag red">SOLD OUT</span>');
+  if (p.transistors && p.transistors.mintPriceWei === '0') f.push('<span class="flag green">FREE MINT</span>');
+  if (DIFF) for (const e of DIFF.events) if (e.index === p.index) f.push('<span class="flag">CHANGED</span>');
+  return f.join(' ');
+}
+
+function protocolCards(s) {
+  const f = s.factory, m = s.market;
+  const card = (title, c, extra) => `
+    <div class="card">
+      <div><strong>${esc(title)}</strong></div>
+      <div class="mono"><span class="k">address:</span> ${esc(c.address)}</div>
+      <div class="mono"><span class="k">code:</span> ${fmt(c.codeBytes)} bytes (EIP-1967 proxy)</div>
+      <div class="mono"><span class="k">implementation:</span> ${esc(c.implementation || '—')}${c.implementationCodeBytes ? ` (${fmt(c.implementationCodeBytes)} bytes)` : ''}</div>
+      <div class="mono"><span class="k">admin:</span> ${esc(c.admin || '—')}</div>
+      ${extra || ''}
+    </div>`;
+  return card('TapeOut CPU factory', f, `
+      <div class="mono"><span class="k">registered processors:</span> ${fmt(f.cpuCount)} · <span class="k">owner:</span> ${esc(f.owner || '—')} · <span class="k">sealed:</span> ${f.isSealed}</div>
+      <div class="mono"><span class="k">protocol wallet:</span> ${esc(f.protocolWallet || '—')} · <span class="k">BEM token:</span> ${esc(f.bemToken || '—')}</div>`)
+    + card('TapeOut market', m, `
+      <div class="mono"><span class="k">fee:</span> ${m.feeBps === null ? '—' : fmt(m.feeBps) + ' bps'} · <span class="k">listings ever:</span> ${fmt(m.nextListingId)} · <span class="k">owner:</span> ${esc(m.owner || '—')} · <span class="k">sealed:</span> ${m.isSealed}</div>`)
+    + `<div class="card">
+        <div><strong>Shared beacons — the systemic watch item</strong></div>
+        <div class="mono"><span class="k">circuit beacon:</span> ${esc(s.beacons.circuit.address)} → impl ${esc(s.beacons.circuit.implementation)}</div>
+        <div class="mono"><span class="k">transistor beacon:</span> ${esc(s.beacons.transistor.address)} → impl ${esc(s.beacons.transistor.implementation)}</div>
+        <p class="warn" style="margin:.4rem 0 0">Every processor is a beacon proxy. One beacon upgrade silently changes the code behind all of them — FabReceipt diffs these implementations in every snapshot.</p>
+      </div>`;
+}
+
+function changeLog() {
+  if (!DIFF) return '<p class="sub">No snapshot diff published yet.</p>';
+  if (!DIFF.events.length) return `<p class="ok">No changes detected between block ${fmt(DIFF.from.block)} and block ${fmt(DIFF.to.block)}.</p>`;
+  return DIFF.events.map((e) => `<div class="evt ${e.scope === 'protocol' ? 'proto' : ''}"><span class="mono">[${esc(e.scope)}/${esc(e.type)}]</span> ${esc(e.msg)}</div>`).join('')
+    + `<p class="sub">Comparing block ${fmt(DIFF.from.block)} → ${fmt(DIFF.to.block)}.</p>`;
+}
+
+function listView() {
+  const s = SNAP, st = s.stats;
+  const rows = s.processors
+    .filter((p) => {
+      if (!query) return true;
+      const q = query.toLowerCase();
+      return (p.name || '').toLowerCase().includes(q) || (p.symbol || '').toLowerCase().includes(q)
+        || p.address.toLowerCase().includes(q) || (p.creator || '').toLowerCase().includes(q);
+    })
+    .sort((a, b) => {
+      const va = sortKey === 'price' ? Number(a.transistors?.mintPriceWei || 0) : a[sortKey];
+      const vb = sortKey === 'price' ? Number(b.transistors?.mintPriceWei || 0) : b[sortKey];
+      return ((va ?? 0) < (vb ?? 0) ? -1 : (va ?? 0) > (vb ?? 0) ? 1 : 0) * sortDir;
+    })
+    .map((p) => `<tr class="prow" data-i="${p.index}">
+      <td class="num">${p.index}</td>
+      <td><strong>${esc(p.name || '(unnamed)')}</strong> <span class="k">${esc(p.symbol || '')}</span><br><span class="mono">${short(p.address)}</span></td>
+      <td class="num">${fmt(p.circuitsEtched)}</td>
+      <td class="num">${p.transistors ? esc(p.transistors.mintPriceOKB) : '—'}</td>
+      <td class="num">${p.transistors ? fmt(p.transistors.minted) + ' / ' + fmt(p.transistors.supplyCap) : '—'}</td>
+      <td>${flagsFor(p)}</td></tr>`).join('');
+  document.getElementById('app').innerHTML = `
+    <p class="mono"><span class="k">chain:</span> ${esc(s.chain)} (${s.chainId}) · <span class="k">census block:</span> ${fmt(s.block)} · <span class="k">taken:</span> ${esc(s.takenAt)}</p>
+    <div class="stats">
+      <div class="stat"><b>${fmt(st.cpuCount)}</b>processors</div>
+      <div class="stat"><b>${fmt(st.totalCircuitsEtched)}</b>circuits etched</div>
+      <div class="stat"><b>${fmt(st.processorsNeverEtched)}</b>never etched</div>
+      <div class="stat"><b>${fmt(st.processorsSoldOut)}</b>sold out</div>
+      <div class="stat"><b>${fmt(st.processorsFreeMint)}</b>free mint</div>
+    </div>
+    ${protocolCards(s)}
+    <h2>Change log</h2>
+    ${changeLog()}
+    <h2>Processors</h2>
+    <input type="search" id="q" placeholder="Search by name, symbol, processor address or creator…" value="${esc(query)}">
+    <table>
+      <thead><tr>
+        <th data-k="index">#</th><th data-k="name">processor</th>
+        <th data-k="circuitsEtched" class="num">circuits</th>
+        <th data-k="price" class="num">price / transistor (OKB)</th>
+        <th class="num">minted / cap</th><th>flags</th>
+      </tr></thead>
+      <tbody>${rows || '<tr><td colspan="6">No processors match.</td></tr>'}</tbody>
+    </table>
+    <p class="sub">Transistor minted totals include a few test processors with astronomical supply caps; per-processor figures are exact on-chain reads at the census block.</p>`;
+  const q = document.getElementById('q');
+  q.addEventListener('input', () => { query = q.value; const pos = q.selectionStart; listView(); const nq = document.getElementById('q'); nq.focus(); nq.setSelectionRange(pos, pos); });
+  document.querySelectorAll('th[data-k]').forEach((th) => th.addEventListener('click', () => {
+    const k = th.dataset.k; if (sortKey === k) sortDir *= -1; else { sortKey = k; sortDir = k === 'name' ? 1 : -1; } listView();
+  }));
+  document.querySelectorAll('tr.prow').forEach((tr) => tr.addEventListener('click', () => { location.hash = '#/cpu/' + tr.dataset.i; }));
+}
+
+function receiptView(p) {
+  const t = p.transistors || {};
+  const share = SNAP.stats.totalCircuitsEtched ? ((100 * (p.circuitsEtched || 0)) / SNAP.stats.totalCircuitsEtched).toFixed(1) : '0.0';
+  const myEvents = DIFF ? DIFF.events.filter((e) => e.index === p.index) : [];
+  const row = (k, v) => `<div class="mono"><span class="k">${esc(k)}:</span> ${v}</div>`;
+  document.getElementById('app').innerHTML = `
+    <p><a href="#/">← all processors</a></p>
+    <div class="card receipt">
+      <h2>Receipt — CPU[${p.index}] ${esc(p.name || '(unnamed)')}</h2>
+      <p>${flagsFor(p) || '<span class="sub">no flags</span>'}</p>
+      <div class="grid">
+        <div>
+          <h3>Identity</h3>
+          ${row('processor address', esc(p.address))}
+          ${row('name / symbol', esc(p.name) + ' / ' + esc(p.symbol))}
+          ${row('creator (owner of record)', esc(p.creator))}
+          ${row('beacon', esc(p.beacon))}
+          ${row('implementation', esc(p.implementation))}
+          ${row('code size', fmt(p.codeBytes) + ' bytes (beacon proxy)')}
+          ${row('transistor contract', esc(t.contract || '—'))}
+        </div>
+        <div>
+          <h3>Economics (transistors)</h3>
+          ${row('mint price', t.mintPriceOKB !== null && t.mintPriceOKB !== undefined ? esc(t.mintPriceOKB) + ' OKB (' + esc(t.mintPriceWei) + ' wei)' : '—')}
+          ${row('minted', fmt(t.minted))}
+          ${row('supply cap', fmt(t.supplyCap))}
+          ${row('sold out', t.soldOut === null || t.soldOut === undefined ? '—' : String(t.soldOut))}
+          <h3>Production</h3>
+          ${row('circuits etched', fmt(p.circuitsEtched))}
+          ${row('share of all circuits', share + '%')}
+          ${row('census block', fmt(SNAP.block))}
+        </div>
+      </div>
+      <h3>Change flags (vs previous snapshot)</h3>
+      ${myEvents.length ? myEvents.map((e) => `<div class="evt"><span class="mono">[${esc(e.type)}]</span> ${esc(e.msg)}</div>`).join('') : '<p class="sub">No changes for this processor in the latest diff.</p>'}
+    </div>`;
+}
+
+function route() {
+  if (!SNAP) return;
+  const m = location.hash.match(/^#\/cpu\/(\d+)$/);
+  if (m) {
+    const p = SNAP.processors.find((x) => x.index === Number(m[1]));
+    if (p) { receiptView(p); window.scrollTo(0, 0); return; }
+  }
+  listView();
+}
+
+Promise.all([
+  fetch('snapshot-latest.json').then((r) => r.json()),
+  fetch('diff-latest.json').then((r) => (r.ok ? r.json() : null)).catch(() => null),
+]).then(([s, d]) => {
+  SNAP = s; DIFF = d;
+  if (s.version !== 2) { document.getElementById('app').textContent = 'Snapshot is not a census (v2) snapshot yet.'; return; }
+  window.addEventListener('hashchange', route);
+  route();
+}).catch((e) => { document.getElementById('app').textContent = 'Snapshot not available yet: ' + e.message; });
+</script>
+</body>
+</html>

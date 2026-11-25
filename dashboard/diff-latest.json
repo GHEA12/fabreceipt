@@ -1,0 +1,13 @@
+{
+  "from": {
+    "block": 76813166,
+    "takenAt": "2026-11-25T04:53:34.603Z",
+    "file": "census-76813166.json"
+  },
+  "to": {
+    "block": 76813465,
+    "takenAt": "2026-11-25T04:58:02.671Z",
+    "file": "census-76813465.json"
+  },
+  "events": []
+}
