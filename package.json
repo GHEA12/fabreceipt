@@ -1,0 +1,1 @@
+{"dependencies":{"ethers":"^6.13.0","solc":"^0.8.28"},"description":"FabReceipt — living safety-and-activity receipts for TapeOut processors on X Layer (TapeOut Accelerate hackathon entry)","name":"fabreceipt","private":true,"scripts":{"compile":"node contracts/compile.js","scan":"node scanner/scan.js"},"version":"0.1.0"}
